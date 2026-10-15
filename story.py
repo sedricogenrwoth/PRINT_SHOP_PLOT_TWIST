@@ -129,5 +129,12 @@ def main():
     print("Ending: report printed, PDF archived, and the group can finally exhale.")
 
 
+
+
+# Extension 1: Binding charges UGX 500 for the whole job.
+class Binding(OutputOption):
+    def quote(self, pages):
+        return 500
+
 if __name__ == "__main__":
     main()
