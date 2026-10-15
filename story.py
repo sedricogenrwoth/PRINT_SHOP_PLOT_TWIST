@@ -136,5 +136,212 @@ class Binding(OutputOption):
     def quote(self, pages):
         return 500
 
+from story import Binding, ReportSession
+
+binding = Binding("Simple binding")
+
+# Normal case
+session = ReportSession("Nakato", 1000)
+print("Expected quote: UGX 500")
+print("Actual quote:", binding.quote(4))
+print("Expected: successful production")
+print("Actual:", session.produce(binding, 4))
+print("Expected balance: UGX 500")
+print("Actual balance:", session.credit.balance)
+
+# Boundary case
+empty_session = ReportSession("Nakato", 1000)
+print("\nExpected: zero pages refused")
+print("Actual:", empty_session.produce(binding, 0))
+print("Expected balance: UGX 1000")
+print("Actual balance:", empty_session.credit.balance)
+
+
+# Extension 2: Add credit only when the amount is positive.
+def top_up(self, amount):
+    if amount <= 0:
+        return False
+
+    self.balance = self.balance + amount
+    return True
+from story import PrintCredit
+
+# Normal case
+credit = PrintCredit(500)
+print("Expected: True")
+print("Actual:", credit.top_up(300))
+print("Expected balance: UGX 800")
+print("Actual balance:", credit.balance)
+
+# Boundary case
+credit2 = PrintCredit(500)
+print("\nExpected: False")
+print("Actual:", credit2.top_up(0))
+print("Expected balance: UGX 500")
+print("Actual balance:", credit2.balance)
+
+
+# Extension 3: Email copies cost nothing and do not require paper.
+class EmailCopy:
+    def __init__(self, name="Email report"):
+        self.name = name
+
+    def quote(self, pages):
+        return 0
+
+    def describe(self):
+        return f"{self.name} is delivered electronically at no printing cost."
+
+
+from story import EmailCopy, ReportSession, compare_outputs
+
+email = EmailCopy()
+
+# Normal case
+compare_outputs([email], 4)
+
+session = ReportSession("Nakato", 1000)
+print("\nExpected: successful output costing UGX 0")
+print("Actual:", session.produce(email, 4))
+print("Expected balance: UGX 1000")
+print("Actual balance:", session.credit.balance)
+
+# Boundary case
+session2 = ReportSession("Nakato", 1000)
+print("\nExpected: zero pages refused")
+print("Actual:", session2.produce(email, 0))
+print("Expected outputs: 0")
+print("Actual outputs:", session2.completed_outputs)
+
+
+
+# Extension 4: Return the cheapest option without producing a report.
+def cheapest_output(options, pages):
+    if not options:
+        return None
+
+    return min(options, key=lambda option: option.quote(pages))
+from story import (
+    BlackAndWhite, Colour, StudentPrint, PDFSubmission,
+    cheapest_output, ReportSession
+)
+
+options = [
+    BlackAndWhite(),
+    Colour("Colour print"),
+    StudentPrint("Student print"),
+    PDFSubmission()
+]
+
+# Normal case
+winner = cheapest_output(options, 4)
+print("Expected: PDF for the group archive")
+print("Actual:", winner.name if winner else None)
+
+# Read-only check
+session = ReportSession("Nakato", 1000)
+before_balance = session.credit.balance
+before_count = session.completed_outputs
+
+cheapest_output(options, 4)
+
+print("\nExpected balance unchanged:", before_balance)
+print("Actual balance:", session.credit.balance)
+print("Expected output count unchanged:", before_count)
+print("Actual output count:", session.completed_outputs)
+
+# Boundary case
+print("\nExpected: None")
+print("Actual:", cheapest_output([], 4))
+
+
+# Extension 5: Return a receipt without changing charges or history.
+def receipt(self):
+    return {
+        "student": self.student,
+        "successful_outputs": [output.name for output in self._outputs],
+        "count": self.completed_outputs,
+        "remaining_credit": self.credit.balance
+    }
+
+from story import ReportSession, StudentPrint, PDFSubmission
+
+session = ReportSession("Nakato", 1000)
+session.produce(StudentPrint("Student print"), 4)
+session.produce(PDFSubmission(), 4)
+
+# Normal case
+before_balance = session.credit.balance
+before_count = session.completed_outputs
+
+print("Expected receipt: Nakato, 2 outputs, UGX 400 remaining")
+print("Actual receipt:", session.receipt())
+
+# Read-only check
+print("\nExpected balance unchanged:", before_balance)
+print("Actual balance:", session.credit.balance)
+print("Expected count unchanged:", before_count)
+print("Actual count:", session.completed_outputs)
+
+# Boundary case
+empty_session = ReportSession("Okello", 800)
+print("\nExpected count: 0")
+print("Actual count:", empty_session.receipt()["count"])
+print("Expected remaining credit: UGX 800")
+print("Actual remaining credit:",
+      empty_session.receipt()["remaining_credit"])
+
+
+# Extension 6: Add UGX 300 to the student printing price for a cover.
+class CoveredPrint(StudentPrint):
+    def quote(self, pages):
+        return super().quote(pages) + 300
+
+from story import CoveredPrint, ReportSession, compare_outputs
+
+covered = CoveredPrint("Student print with cover")
+
+# Normal case
+compare_outputs([covered], 4)
+
+session = ReportSession("Nakato", 1000)
+print("\nExpected quote: UGX 900")
+print("Actual quote:", covered.quote(4))
+print("Expected: successful production")
+print("Actual:", session.produce(covered, 4))
+print("Expected balance: UGX 100")
+print("Actual balance:", session.credit.balance)
+
+# Refused case
+session2 = ReportSession("Okello", 800)
+print("\nExpected: production refused")
+print("Actual:", session2.produce(covered, 4))
+print("Expected balance: UGX 800")
+print("Actual balance:", session2.credit.balance)
+print("Expected outputs: 0")
+print("Actual outputs:", session2.completed_outputs)from story import CoveredPrint, ReportSession, compare_outputs
+
+covered = CoveredPrint("Student print with cover")
+
+# Normal case
+compare_outputs([covered], 4)
+
+session = ReportSession("Nakato", 1000)
+print("\nExpected quote: UGX 900")
+print("Actual quote:", covered.quote(4))
+print("Expected: successful production")
+print("Actual:", session.produce(covered, 4))
+print("Expected balance: UGX 100")
+print("Actual balance:", session.credit.balance)
+
+# Refused case
+session2 = ReportSession("Okello", 800)
+print("\nExpected: production refused")
+print("Actual:", session2.produce(covered, 4))
+print("Expected balance: UGX 800")
+print("Actual balance:", session2.credit.balance)
+print("Expected outputs: 0")
+print("Actual outputs:", session2.completed_outputs)    
+
 if __name__ == "__main__":
     main()
