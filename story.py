@@ -287,5 +287,18 @@ def main():
     print("Actual outputs:", session2.completed_outputs)
 
 
+# Extension 1: Binding charges UGX 500 for the whole job.
+class Binding(OutputOption):
+    def quote(self, pages):
+        return 500
+
+# Extension 2: Add credit only when the amount is positive.
+def top_up(self, amount):
+    if amount <= 0:
+        return False
+
+    self.balance = self.balance + amount
+    return True
+  
 if __name__ == "__main__":
     main()
